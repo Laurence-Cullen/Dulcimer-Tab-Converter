@@ -42,15 +42,55 @@ def extract_frets(guitar_string):
     return frets
 
 
+def fret_to_note(string_name, fret_number):
+    i = all_notes.index(string_name)
+    return all_notes[i + fret_number]
+
+
+def frets_to_notes(string_name, frets):
+    notes = {}
+    for beat in frets:
+        notes[beat] = fret_to_note(string_name, frets[beat])
+
+    return notes
+
+
+def place_notes_in_beat_order(notes):
+    """
+
+    :type notes: dict
+    """
+    phrase = ''
+
+    last_beat = max(notes)
+
+    for beat in range(0, last_beat + 1):
+        if beat in notes:
+            phrase = phrase + notes[beat]
+        else:
+            phrase = phrase + '-'
+
+    return phrase
+
+
+def tab_line_to_phrase(tab_line):
+    notes = {}
+
+    for string_name in tab_line:
+        frets = extract_frets(guitar_string=tab_line[string_name])
+
+        notes.update(frets_to_notes(string_name=string_name, frets=frets))
+
+    phrase = place_notes_in_beat_order(notes)
+
+    return phrase
+
+
 def main():
-    # tab_lines = read_tab_file('tab.txt')
-    # print(tab_lines)
+    tab_lines = read_tab_file('tab.txt')
 
-    guitar_string = '|-------------||-----------------5-5----10-9-10-12-10-----7-8-8-10-8-7-------|'
-
-    frets = extract_frets(guitar_string)
-
-    print(frets)
+    for tab_line in tab_lines:
+        print(tab_line_to_phrase(tab_line))
 
 
 if __name__ == '__main__':
