@@ -6,6 +6,38 @@ octave3 = ["e'", "f'", "f#'", "g'", "g#'", "a'", "a#'", "b'", "c'", "c#'", "d'",
 
 all_notes = octave1 + octave2 + octave3
 
+dulcimer_map = {
+    "E": "[1]",
+    "G": "[2]",
+    "A": "[3]",
+    "B": "[4]",
+    "C": "[5]",
+    "C#": "1",
+    "D": "[6]/2",
+    "D#": "3",
+    "e": "[7]",
+    "f": "[8]",
+    "f#": "4",
+    "g": "5",
+    "g#": "[9]/(1)",
+    "a": "[10]/6/(2)",
+    "a#": "[11]/(3)",
+    "b": "[12]/7",
+    "c": "8",
+    "c#": "(4)",
+    "d": "9/(5)",
+    "d#": "10",
+    "e'": "(6)",
+    "f'": "11",
+    "f#'": "(7)",
+    "g'": "(8)",
+    "g#'": "12",
+    "a'": "(9)",
+    "a#'": "(10)",
+    "c'": "(11)",
+    "d#'": "(12)",
+}
+
 
 def read_tab_file(tab_file_path):
     with open(tab_file_path) as tab:
@@ -31,15 +63,22 @@ def read_tab_file(tab_file_path):
 
 def extract_frets(guitar_string):
     frets = {}
+    bar_lines = {}
 
     for i in range(1, len(guitar_string) - 1):
+        if ' ' == guitar_string[i - 1]:
+            continue
+
         if (guitar_string[i] + guitar_string[i + 1]).isnumeric():
             frets[i] = int(guitar_string[i] + guitar_string[i + 1])
 
         elif guitar_string[i].isnumeric() and not guitar_string[i - 1].isnumeric():
             frets[i] = int(guitar_string[i])
 
-    return frets
+        elif guitar_string[i] == '|':
+            bar_lines[i] = '|'
+
+    return frets, bar_lines
 
 
 def fret_to_note(string_name, fret_number):
@@ -55,11 +94,15 @@ def frets_to_notes(string_name, frets):
     return notes
 
 
-def place_notes_in_beat_order(notes):
+def place_notes_in_beat_order(notes, bar_lines=None):
     """
 
+    :param bar_lines:
     :type notes: dict
     """
+    if bar_lines is None:
+        bar_lines = {}
+
     phrase = ''
 
     last_beat = max(notes)
@@ -68,29 +111,62 @@ def place_notes_in_beat_order(notes):
         if beat in notes:
             phrase = phrase + notes[beat]
         else:
-            phrase = phrase + '-'
+            if beat in bar_lines:
+                phrase = phrase + '|'
+            else:
+                phrase = phrase + '-'
 
     return phrase
 
 
-def tab_line_to_phrase(tab_line):
+def notes_to_dulcimer_tab(notes, bar_lines=None):
+    """
+
+    :type notes: dict
+    """
+    if bar_lines is None:
+        bar_lines = {}
+
+    dulcimer_tab = ''
+
+    last_beat = max(notes)
+
+    for beat in range(0, last_beat + 1):
+        if beat in notes:
+            if notes[beat] in dulcimer_map:
+                dulcimer_tab = dulcimer_tab + dulcimer_map[notes[beat]]
+            else:
+                dulcimer_tab = dulcimer_tab + notes[beat]
+
+        elif beat in bar_lines:
+            dulcimer_tab = dulcimer_tab + '|'
+
+        else:
+            dulcimer_tab = dulcimer_tab + '-'
+
+    return dulcimer_tab
+
+
+def tab_line_to_notes(tab_line):
     notes = {}
+    all_bar_lines = {}
 
     for string_name in tab_line:
-        frets = extract_frets(guitar_string=tab_line[string_name])
+        frets, bar_lines = extract_frets(guitar_string=tab_line[string_name])
 
+        all_bar_lines.update(bar_lines)
         notes.update(frets_to_notes(string_name=string_name, frets=frets))
 
-    phrase = place_notes_in_beat_order(notes)
-
-    return phrase
+    return notes, all_bar_lines
 
 
 def main():
     tab_lines = read_tab_file('tab.txt')
 
     for tab_line in tab_lines:
-        print(tab_line_to_phrase(tab_line))
+        notes, bar_lines = tab_line_to_notes(tab_line)
+        print(notes_to_dulcimer_tab(notes, bar_lines))
+        # print(place_notes_in_beat_order(notes, bar_lines))
 
 
 if __name__ == '__main__':
