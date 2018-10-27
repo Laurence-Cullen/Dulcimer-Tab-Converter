@@ -6,6 +6,7 @@ octave3 = ["e'", "f'", "f#'", "g'", "g#'", "a'", "a#'", "b'", "c'", "c#'", "d'",
 
 all_notes = octave1 + octave2 + octave3
 
+# Ellie's standard octave, maybe octave up from standard guitar octave
 dulcimer_map = {
     "E": "[1]",
     "G": "[2]",
@@ -177,4 +178,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
