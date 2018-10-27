@@ -119,7 +119,7 @@ def place_notes_in_beat_order(notes, bar_lines=None):
     return phrase
 
 
-def notes_to_dulcimer_tab(notes, bar_lines=None):
+def notes_to_dulcimer_tab(notes, last_beat, bar_lines=None):
     """
 
     :type notes: dict
@@ -129,20 +129,27 @@ def notes_to_dulcimer_tab(notes, bar_lines=None):
 
     dulcimer_tab = ''
 
-    last_beat = max(notes)
+    unit_width = 0
+    for note in dulcimer_map:
+        if len(dulcimer_map[note]) > unit_width:
+            unit_width = len(dulcimer_map[note])
 
     for beat in range(0, last_beat + 1):
         if beat in notes:
             if notes[beat] in dulcimer_map:
-                dulcimer_tab = dulcimer_tab + dulcimer_map[notes[beat]]
+                fill_value = dulcimer_map[notes[beat]]
             else:
-                dulcimer_tab = dulcimer_tab + notes[beat]
+                fill_value = notes[beat]
+
+            padded_fill_value = fill_value + '-' * (unit_width - len(fill_value))
+
+            dulcimer_tab = dulcimer_tab + padded_fill_value
 
         elif beat in bar_lines:
-            dulcimer_tab = dulcimer_tab + '|'
+            dulcimer_tab = dulcimer_tab + '|' * unit_width
 
         else:
-            dulcimer_tab = dulcimer_tab + '-'
+            dulcimer_tab = dulcimer_tab + '-' * unit_width
 
     return dulcimer_tab
 
@@ -165,8 +172,7 @@ def main():
 
     for tab_line in tab_lines:
         notes, bar_lines = tab_line_to_notes(tab_line)
-        print(notes_to_dulcimer_tab(notes, bar_lines))
-        # print(place_notes_in_beat_order(notes, bar_lines))
+        print(notes_to_dulcimer_tab(notes, len(tab_line['e']), bar_lines), '\n')
 
 
 if __name__ == '__main__':
