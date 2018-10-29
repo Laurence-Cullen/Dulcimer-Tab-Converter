@@ -40,26 +40,40 @@ dulcimer_map = {
 }
 
 
-def read_tab_file(tab_file_path):
+def parse_tab_lines(lines):
+
+    tab_lines = []
+    tab_line = {}
+
+    for line in lines:
+        line.replace('h', '-')
+        line.replace('p', '-')
+
+        if line.endswith('|\n') or line.endswith('|'):
+
+            tab_line[line[0]] = line[1::].strip('\n')
+
+            if line[0] == bottom_string:
+                tab_lines.append(tab_line)
+
+                tab_line = {}
+
+    return tab_lines
+
+
+def parse_tab_file(tab_file_path):
+    """
+    Loads a file of
+
+    :param tab_file_path:
+    :return:
+    """
     with open(tab_file_path) as tab:
+        return parse_tab_lines(tab.readlines())
 
-        tab_lines = []
 
-        tab_line = {}
-        for line in tab.readlines():
-            line.replace('h', '-')
-            line.replace('p', '-')
-
-            if line.endswith('|\n') or line.endswith('|'):
-
-                tab_line[line[0]] = line[1::].strip('\n')
-
-                if line[0] == bottom_string:
-                    tab_lines.append(tab_line)
-
-                    tab_line = {}
-
-        return tab_lines
+def parse_tab_string(tab_string, delim='\n'):
+    return parse_tab_lines(tab_string.split(delim))
 
 
 def extract_frets(guitar_string):
@@ -121,10 +135,6 @@ def place_notes_in_beat_order(notes, bar_lines=None):
 
 
 def notes_to_dulcimer_tab(notes, last_beat, bar_lines=None):
-    """
-
-    :type notes: dict
-    """
     if bar_lines is None:
         bar_lines = {}
 
@@ -168,13 +178,43 @@ def tab_line_to_notes(tab_line):
     return notes, all_bar_lines
 
 
-def main():
-    tab_lines = read_tab_file('tab.txt')
+def guitar_tab_lines_to_dulcimer(tab_lines):
+    dulcimer_tab = ''
 
     for tab_line in tab_lines:
         notes, bar_lines = tab_line_to_notes(tab_line)
-        print(notes_to_dulcimer_tab(notes, len(tab_line['e']), bar_lines), '\n')
+        dulcimer_tab += notes_to_dulcimer_tab(notes, len(tab_line['e']), bar_lines) + '\n\n'
+
+    return dulcimer_tab
+
+
+def test():
+    guitar_tab_lines = parse_tab_file('tab.txt')
+
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
+    print(dulcimer_tab)
+
+
+def guitar_to_dulcimer_tab(request):
+    """Responds to any HTTP request.
+    Args:
+        request (flask.Request): HTTP request object.
+    Returns:
+        Dulcimer tab string if a tab get request is passed in.
+    """
+
+    request_json = request.get_json()
+    if request.args and 'tab' in request.args:
+        tab_string = request.args.get('tab')
+    elif request_json and 'tab' in request_json:
+        tab_string = request_json['tab']
+    else:
+        return f'No guitar tab passed in'
+
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+
+    return dulcimer_tab
 
 
 if __name__ == '__main__':
-    main()
+    test()
