@@ -42,9 +42,9 @@
 
 
 <script>
-    google_cloud_function_url = 'https://us-central1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
+    google_cloud_function_url = 'https://europe-west1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
 
-    var app = new Vue({
+    let app = new Vue({
         el: '#tab-converter',
         data: {
             guitar_tab_string: '',
@@ -52,6 +52,9 @@
         },
         methods: {
             get_dulcimer_tab: function () {
+
+                console.log('sending:', {'tab': this.guitar_tab_string});
+
                 $.post({
                     url: google_cloud_function_url,
                     type: 'post',

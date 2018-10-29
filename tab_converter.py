@@ -1,3 +1,6 @@
+authorised_domain = 'https://dulcimer-tab.firebaseapp.com/'
+
+
 bottom_string = 'E'
 
 octave1 = ["E", "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#"]
@@ -188,15 +191,15 @@ def guitar_tab_lines_to_dulcimer(tab_lines):
     return dulcimer_tab
 
 
-def main():
-    with open('tab.txt') as tab_file:
-        guitar_tab_string = tab_file.read()
-
-    # guitar_tab_lines = parse_tab_file('tab.txt')
-    guitar_tab_lines = parse_tab_string(guitar_tab_string)
-
-    dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
-    print(dulcimer_tab)
+# def main():
+#     with open('tab.txt') as tab_file:
+#         guitar_tab_string = tab_file.read()
+#
+#     # guitar_tab_lines = parse_tab_file('tab.txt')
+#     guitar_tab_lines = parse_tab_string(guitar_tab_string)
+#
+#     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
+#     print(dulcimer_tab)
 
 
 def guitar_to_dulcimer_tab(request):
@@ -212,17 +215,19 @@ def guitar_to_dulcimer_tab(request):
         # Allows GET requests from any origin with the Content-Type
         # header and caches preflight response for an 3600s
         headers = {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': authorised_domain,
             'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '3600'
+            'Access-Control-Allow-Headers': 'Authorization',
+            'Access-Control-Max-Age': '3600',
+            'Access-Control-Allow-Credentials': 'true'
         }
 
         return '', 204, headers
 
     # Set CORS headers for the main request
     headers = {
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': authorised_domain,
+        'Access-Control-Allow-Credentials': 'true'
     }
 
     request_json = request.get_json()
@@ -233,10 +238,13 @@ def guitar_to_dulcimer_tab(request):
     else:
         return f'No guitar tab passed in', 200, headers
 
-    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+    try:
+        dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+    except Exception as e:
+        return str(e), 200, headers
 
     return dulcimer_tab, 200, headers
-
-
-if __name__ == '__main__':
-    main()
+#
+#
+# if __name__ == '__main__':
+#     main()
