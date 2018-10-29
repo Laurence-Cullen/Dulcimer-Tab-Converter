@@ -20,7 +20,7 @@
     <textarea class="form-control" id="guitarTabTextArea" rows="3"></textarea>
 </div>
 
-<button type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
+<button v-on:click="" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
 
 </div>
 
@@ -41,7 +41,15 @@
 
 <script>
     var app = new Vue({
-        el: '#tab-converter'
+        el: '#tab-converter',
+        data: {
+
+        },
+        methods: {
+            get_dulcimer_tab: function () {
+                
+            }
+        }
     })
 </script>
 
