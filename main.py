@@ -188,8 +188,12 @@ def guitar_tab_lines_to_dulcimer(tab_lines):
     return dulcimer_tab
 
 
-def test():
-    guitar_tab_lines = parse_tab_file('tab.txt')
+def main():
+    with open('tab.txt') as tab_file:
+        guitar_tab_string = tab_file.read()
+
+    # guitar_tab_lines = parse_tab_file('tab.txt')
+    guitar_tab_lines = parse_tab_string(guitar_tab_string)
 
     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
     print(dulcimer_tab)
@@ -211,10 +215,11 @@ def guitar_to_dulcimer_tab(request):
     else:
         return f'No guitar tab passed in'
 
-    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+    # dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+    # return dulcimer_tab
 
-    return dulcimer_tab
+    return tab_string
 
 
 if __name__ == '__main__':
-    test()
+    main()
