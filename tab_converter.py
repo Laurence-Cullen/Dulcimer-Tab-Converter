@@ -213,12 +213,17 @@ def guitar_to_dulcimer_tab(request):
         # header and caches preflight response for an 3600s
         headers = {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
+            'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Access-Control-Max-Age': '3600'
         }
 
         return '', 204, headers
+
+    # Set CORS headers for the main request
+    headers = {
+        'Access-Control-Allow-Origin': '*'
+    }
 
     request_json = request.get_json()
     if request.args and 'tab' in request.args:
@@ -226,17 +231,9 @@ def guitar_to_dulcimer_tab(request):
     elif request_json and 'tab' in request_json:
         tab_string = request_json['tab']
     else:
-        return f'No guitar tab passed in'
+        return f'No guitar tab passed in', 200, headers
 
     dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
-
-    # Set CORS headers for the main request
-    headers = {
-        'Content-Type':'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-    }
-    # END CORS
 
     return dulcimer_tab, 200, headers
 
