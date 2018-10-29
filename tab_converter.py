@@ -215,10 +215,8 @@ def guitar_to_dulcimer_tab(request):
     else:
         return f'No guitar tab passed in'
 
-    # dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
-    # return dulcimer_tab
-
-    return tab_string
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+    return dulcimer_tab
 
 
 if __name__ == '__main__':
