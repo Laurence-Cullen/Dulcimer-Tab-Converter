@@ -13,15 +13,16 @@
 </head>
 <body>
 <div id="tab-converter">
-<h1>Hello, world!</h1>
+    <h1>Hello, world!</h1>
 
-<div class="form-group">
-    <label for="guitarTabTextArea">Paste in guitar tab to convert:</label>
-    <textarea class="form-control" id="guitarTabTextArea" rows="3"></textarea>
-</div>
+    <div class="form-group">
+        <label for="guitarTabTextArea">Paste in guitar tab to convert:</label>
+        <textarea v-model="guitar_tab_string" class="form-control" id="guitarTabTextArea" rows="3"></textarea>
+    </div>
 
-<button v-on:click="" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
+    <button v-on:click="get_dulcimer_tab" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
 
+    <p id="dulcimerTab"></p>
 </div>
 
 <!-- Optional JavaScript -->
@@ -40,14 +41,26 @@
 
 
 <script>
+    google_cloud_function_url = 'https://us-central1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
+
     var app = new Vue({
         el: '#tab-converter',
         data: {
-
+            guitar_tab_string: '',
+            dulcimer_tab_string: ''
         },
         methods: {
             get_dulcimer_tab: function () {
-                
+                $.post({
+                    url: google_cloud_function_url,
+                    type: 'post',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    success: function (data) {
+                        $('#dulcimerTab').html(data.msg);
+                    },
+                    data: this.guitar_tab_string
+                });
             }
         }
     })
