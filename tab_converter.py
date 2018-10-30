@@ -1,6 +1,3 @@
-authorised_domain = 'https://dulcimer-tab.firebaseapp.com/'
-
-
 bottom_string = 'E'
 
 octave1 = ["E", "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#"]
@@ -191,60 +188,50 @@ def guitar_tab_lines_to_dulcimer(tab_lines):
     return dulcimer_tab
 
 
-# def main():
-#     with open('tab.txt') as tab_file:
-#         guitar_tab_string = tab_file.read()
-#
-#     # guitar_tab_lines = parse_tab_file('tab.txt')
-#     guitar_tab_lines = parse_tab_string(guitar_tab_string)
-#
-#     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
-#     print(dulcimer_tab)
+def main():
+    with open('tab.txt') as tab_file:
+        guitar_tab_string = tab_file.read()
+
+    # guitar_tab_lines = parse_tab_file('tab.txt')
+    guitar_tab_lines = parse_tab_string(guitar_tab_string)
+
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
+    print(dulcimer_tab)
 
 
 def guitar_to_dulcimer_tab(request):
-    """Responds to any HTTP request.
-    Args:
-        request (flask.Request): HTTP request object.
-    Returns:
-        Dulcimer tab string if a tab get request is passed in.
-    """
+    # For more information about CORS and CORS preflight requests, see
+    # https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
+    # for more information.
 
     # Set CORS headers for the preflight request
     if request.method == 'OPTIONS':
         # Allows GET requests from any origin with the Content-Type
         # header and caches preflight response for an 3600s
         headers = {
-            'Access-Control-Allow-Origin': authorised_domain,
+            'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'Authorization',
-            'Access-Control-Max-Age': '3600',
-            'Access-Control-Allow-Credentials': 'true'
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
         }
 
-        return '', 204, headers
+        return ('', 204, headers)
 
     # Set CORS headers for the main request
     headers = {
-        'Access-Control-Allow-Origin': authorised_domain,
-        'Access-Control-Allow-Credentials': 'true'
+        'Access-Control-Allow-Origin': '*'
     }
 
     request_json = request.get_json()
-    if request.args and 'tab' in request.args:
-        tab_string = request.args.get('tab')
-    elif request_json and 'tab' in request_json:
+    if request_json and 'tab' in request_json:
         tab_string = request_json['tab']
     else:
-        return f'No guitar tab passed in', 200, headers
+        return ('No guitar tab passed in', 200, headers)
 
-    try:
-        dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
-    except Exception as e:
-        return str(e), 200, headers
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
 
-    return dulcimer_tab, 200, headers
-#
-#
-# if __name__ == '__main__':
-#     main()
+    return (dulcimer_tab, 200, headers)
+
+
+if __name__ == '__main__':
+    main()
