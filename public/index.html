@@ -22,7 +22,7 @@
 
     <button v-on:click="get_dulcimer_tab" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
 
-    <p id="dulcimerTab">{{ dulcimer_tab_string }}</p>
+    <p v-html="dulcimer_tab_string"></p>
 </div>
 
 <!-- Optional JavaScript -->
@@ -61,7 +61,7 @@
                     data: JSON.stringify({'tab': this.guitar_tab_string})
                 })
                     .done(function (msg) {
-                        app.dulcimer_tab_string = msg.toString();
+                        app.dulcimer_tab_string = msg.toString().replace('\n', '<br>');
                         alert("success: " + msg.toString());
                         console.log(msg.toString());
                     })
