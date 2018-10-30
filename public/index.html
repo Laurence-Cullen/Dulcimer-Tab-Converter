@@ -61,7 +61,7 @@
                     data: JSON.stringify({'tab': this.guitar_tab_string})
                 })
                     .done(function (msg) {
-                        app.dulcimer_tab_string = msg.toString().replace('/\n/g', '<br><br>');
+                        app.dulcimer_tab_string = msg.toString().replace(/\n/g, '<br><br>');
                         console.log(msg.toString());
                     })
                     .fail(function (xhr, textStatus, errorThrown) {
