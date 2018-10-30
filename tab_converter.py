@@ -41,7 +41,6 @@ dulcimer_map = {
 
 
 def parse_tab_lines(lines):
-
     tab_lines = []
     tab_line = {}
 
@@ -215,7 +214,7 @@ def guitar_to_dulcimer_tab(request):
             'Access-Control-Max-Age': '3600'
         }
 
-        return ('', 204, headers)
+        return '', 204, headers
 
     # Set CORS headers for the main request
     headers = {
@@ -226,11 +225,11 @@ def guitar_to_dulcimer_tab(request):
     if request_json and 'tab' in request_json:
         tab_string = request_json['tab']
     else:
-        return ('No guitar tab passed in', 200, headers)
+        return 'No guitar tab passed in', 200, headers
 
     dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
 
-    return (dulcimer_tab, 200, headers)
+    return dulcimer_tab, 200, headers
 
 
 if __name__ == '__main__':
