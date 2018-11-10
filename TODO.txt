@@ -6,3 +6,4 @@ Development priorities:
 2. Optimise pretty printing of dulcimer string instruction, add automatic hyphen squashing etc.
 3. Nail down octave transposing issues with Ellie.
 4. Add automatic/configurable bottom string selection
+5. Add key conversions
