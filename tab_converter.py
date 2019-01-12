@@ -52,7 +52,7 @@ def parse_tab_lines(lines):
 
             tab_line[line[0]] = line[1::].strip('\n')
 
-            if line[0] == bottom_string:
+            if line.startswith(bottom_string):
                 tab_lines.append(tab_line)
 
                 tab_line = {}
