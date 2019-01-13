@@ -1,10 +1,13 @@
 bottom_string = 'E'
 
+octave0 = ["Eb"]
 octave1 = ["E", "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#"]
 octave2 = ["e", "f", "f#", "g", "g#", "a", "a#", "b", "c", "c#", "d", "d#"]
 octave3 = ["e'", "f'", "f#'", "g'", "g#'", "a'", "a#'", "b'", "c'", "c#'", "d'", "d#'"]
+octave4 = ["e''", "f''", "f#''", "g''", "g#''", "a''", "a#''", "b''", "c''", "c#''", "d''", "d#''"]
 
-all_notes = octave1 + octave2 + octave3
+
+all_notes = octave0 + octave1 + octave2 + octave3 + octave4
 
 # Ellie's standard octave, maybe octave up from standard guitar octave
 dulcimer_map = {
@@ -43,6 +46,7 @@ dulcimer_map = {
 def parse_tab_lines(lines):
     tab_lines = []
     tab_line = {}
+    string_notes = []
 
     for line in lines:
         line.replace('h', '-')
@@ -50,14 +54,61 @@ def parse_tab_lines(lines):
 
         if line.endswith('|\n') or line.endswith('|'):
 
-            tab_line[line[0]] = line[1::].strip('\n')
+            string_note = line.split('|')[0]
+            string_note = normalise_note(string_note)
+
+            tab_line[string_note] = line[len(string_note)::].strip('\n')
+            string_notes.append(string_note)
 
             if line.startswith(bottom_string):
+
+                tab_line = rationalise_tab_line(tab_line, string_notes)
+
                 tab_lines.append(tab_line)
 
                 tab_line = {}
 
     return tab_lines
+
+
+def rationalise_tab_line(tab_line, notes):
+    """Rationalise notes in tab line, start from bottom string note assuming
+    that is accurate, then iterate up through notes determining the actual
+    notes they map to.
+
+    Return a tab_line with fixed keys.
+    """
+    rationalised_tab_line = {}
+    rationalised_notes = []
+
+    # reverse order of notes so that the first note is the bottom string
+    bot_up_notes = notes[::-1]
+
+    previous_note = bot_up_notes[0]
+
+    print('notes:', notes)
+
+    for note in bot_up_notes:
+        if note.startswith(bottom_string):
+            rationalised_tab_line[note] = tab_line[note]
+            rationalised_notes.append(note)
+            continue
+
+        print('note to rationalise:', note)
+
+        for i in range(all_notes.index(previous_note) + 1, len(all_notes)):
+            candidate_note = all_notes[i]
+
+            print('candidate note:', candidate_note)
+
+            if note.lower() == candidate_note.replace("'", "").lower():
+                print(note, 'matched with', candidate_note)
+                rationalised_tab_line[candidate_note] = tab_line[note]
+                rationalised_notes.append(candidate_note)
+                previous_note = candidate_note
+                break
+
+    return rationalised_tab_line
 
 
 def parse_tab_file(tab_file_path):
@@ -96,7 +147,12 @@ def extract_frets(guitar_string):
 
 
 def fret_to_note(string_name, fret_number):
+
+    # print(string_name)
+    # print(fret_number)
+
     i = all_notes.index(string_name)
+
     return all_notes[i + fret_number]
 
 
@@ -182,20 +238,44 @@ def guitar_tab_lines_to_dulcimer(tab_lines):
 
     for tab_line in tab_lines:
         notes, bar_lines = tab_line_to_notes(tab_line)
-        dulcimer_tab += notes_to_dulcimer_tab(notes, len(tab_line['e']), bar_lines) + '\n\n'
+        print(tab_line)
+        dulcimer_tab += notes_to_dulcimer_tab(notes, len(list(tab_line.values())[0]), bar_lines) + '\n\n'
 
     return dulcimer_tab
 
 
+def normalise_note(note):
+
+    if len(note) == 1:
+        return note
+    elif len(note) == 2:
+
+        if note[1] == 'b':
+            transpose = -1
+        elif note[1] == '#':
+            transpose = 1
+        else:
+            raise ValueError('invalid note modifier:', note[1])
+
+        return all_notes[all_notes.index(note[0]) + transpose]
+    else:
+        raise ValueError('note length error, length =', len(note))
+
+
 def main():
-    with open('tab.txt') as tab_file:
+    with open('bright_side.txt') as tab_file:
         guitar_tab_string = tab_file.read()
 
     # guitar_tab_lines = parse_tab_file('tab.txt')
     guitar_tab_lines = parse_tab_string(guitar_tab_string)
 
+    # print(guitar_tab_lines)
+
     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
     print(dulcimer_tab)
+
+    # for key in dulcimer_tab.keys():
+    #     print(key, dulcimer_tab[key])
 
 
 def guitar_to_dulcimer_tab(request):
