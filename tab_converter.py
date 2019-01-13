@@ -86,7 +86,7 @@ def rationalise_tab_line(tab_line, notes):
 
     previous_note = bot_up_notes[0]
 
-    print('notes:', notes)
+    # print('notes:', notes)
 
     for note in bot_up_notes:
         if note.startswith(bottom_string):
@@ -94,15 +94,15 @@ def rationalise_tab_line(tab_line, notes):
             rationalised_notes.append(note)
             continue
 
-        print('note to rationalise:', note)
+        # print('note to rationalise:', note)
 
         for i in range(all_notes.index(previous_note) + 1, len(all_notes)):
             candidate_note = all_notes[i]
 
-            print('candidate note:', candidate_note)
+            # print('candidate note:', candidate_note)
 
             if note.lower() == candidate_note.replace("'", "").lower():
-                print(note, 'matched with', candidate_note)
+                # print(note, 'matched with', candidate_note)
                 rationalised_tab_line[candidate_note] = tab_line[note]
                 rationalised_notes.append(candidate_note)
                 previous_note = candidate_note
@@ -146,20 +146,20 @@ def extract_frets(guitar_string):
     return frets, bar_lines
 
 
-def fret_to_note(string_name, fret_number):
+def fret_to_note(string_name, fret_number, semitone_transpose):
 
     # print(string_name)
     # print(fret_number)
 
     i = all_notes.index(string_name)
 
-    return all_notes[i + fret_number]
+    return all_notes[i + fret_number + semitone_transpose]
 
 
-def frets_to_notes(string_name, frets):
+def frets_to_notes(string_name, frets, semitone_transpose):
     notes = {}
     for beat in frets:
-        notes[beat] = fret_to_note(string_name, frets[beat])
+        notes[beat] = fret_to_note(string_name, frets[beat], semitone_transpose=semitone_transpose)
 
     return notes
 
@@ -220,7 +220,7 @@ def notes_to_dulcimer_tab(notes, last_beat, bar_lines=None):
     return dulcimer_tab
 
 
-def tab_line_to_notes(tab_line):
+def tab_line_to_notes(tab_line, semitone_transpose):
     notes = {}
     all_bar_lines = {}
 
@@ -228,17 +228,17 @@ def tab_line_to_notes(tab_line):
         frets, bar_lines = extract_frets(guitar_string=tab_line[string_name])
 
         all_bar_lines.update(bar_lines)
-        notes.update(frets_to_notes(string_name=string_name, frets=frets))
+        notes.update(frets_to_notes(string_name=string_name, frets=frets, semitone_transpose=semitone_transpose))
 
     return notes, all_bar_lines
 
 
-def guitar_tab_lines_to_dulcimer(tab_lines):
+def guitar_tab_lines_to_dulcimer(tab_lines, semitone_transpose=0):
     dulcimer_tab = ''
 
     for tab_line in tab_lines:
-        notes, bar_lines = tab_line_to_notes(tab_line)
-        print(tab_line)
+        notes, bar_lines = tab_line_to_notes(tab_line, semitone_transpose=semitone_transpose)
+        # print(tab_line)
         dulcimer_tab += notes_to_dulcimer_tab(notes, len(list(tab_line.values())[0]), bar_lines) + '\n\n'
 
     return dulcimer_tab
@@ -271,10 +271,10 @@ def main():
 
     # print(guitar_tab_lines)
 
-    dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines)
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines, semitone_transpose=-12)
     print(dulcimer_tab)
 
-    # for key in dulcimer_tab.keys():
+    # for key in list(dulcimer_tab.keys()):
     #     print(key, dulcimer_tab[key])
 
 
@@ -304,10 +304,11 @@ def guitar_to_dulcimer_tab(request):
     request_json = request.get_json()
     if request_json and 'tab' in request_json:
         tab_string = request_json['tab']
+        semitone_transpose = int(request_json['semitoneTranspose'])
     else:
         return 'No guitar tab passed in', 200, headers
 
-    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string))
+    dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string), semitone_transpose=semitone_transpose)
 
     return dulcimer_tab, 200, headers
 

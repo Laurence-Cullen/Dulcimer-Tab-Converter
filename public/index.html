@@ -15,16 +15,53 @@
 </head>
 <body>
 <div id="tab-converter">
-    <h1>Dulcimer Tab Generator</h1>
+    <div class="container">
 
-    <div class="form-group">
-        <label for="guitarTabTextArea">Paste in guitar tab to convert:</label>
-        <textarea v-model="guitar_tab_string" class="form-control" id="guitarTabTextArea" rows="20"></textarea>
+        <h1>Dulcimer Tab Generator</h1>
+
+        <div class="row">
+            <div class="col-10">
+                <div class="form-group">
+                    <label for="guitarTabTextArea">Paste in guitar tab to convert:</label>
+                    <textarea v-model="guitarTabString" class="form-control" id="guitarTabTextArea"
+                              rows="10"></textarea>
+                </div>
+            </div>
+            <div class="col-2">
+
+                <form>
+                    <div class="form-group">
+
+                        <label for="octaveTranspose">Octaves to transpose</label>
+                        <input v-model="octaveTranspose" type="number" id="octaveTranspose" class="form-control"
+                               min="-3" max="3">
+
+                        <label for="semitoneTranspose">Semitones to transpose</label>
+                        <input v-model="semitoneTranspose" type="number" id="semitoneTranspose" class="form-control"
+                               max="12" min="-12">
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="row">
+            <button v-on:click="getDulcimerTab" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
+        </div>
+
+        <div class="row">
+            <div class="col-10">
+                <div class="form-group">
+
+                    <label for="dulcimer_tab_string"></label>
+                    <textarea v-model="dulcimerTabString" class="form-control" name="" id="dulcimer_tab_string" rows="10"></textarea>
+                </div>
+            </div>
+
+
+        </div>
+
+        <!--<p v-html="dulcimer_tab_string"></p>-->
+
     </div>
-
-    <button v-on:click="get_dulcimer_tab" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
-
-    <p v-html="dulcimer_tab_string"></p>
 </div>
 
 <!-- Optional JavaScript -->
@@ -44,26 +81,31 @@
 
 
 <script>
-    cloud_tab_converter_function = 'https://europe-west1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
+    cloudTabConverterFunction = 'https://europe-west1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
 
     let app = new Vue({
         el: '#tab-converter',
         data: {
-            guitar_tab_string: '',
-            dulcimer_tab_string: ''
+            guitarTabString: '',
+            dulcimerTabString: '',
+            octaveTranspose: 0,
+            semitoneTranspose: 0
         },
         methods: {
-            get_dulcimer_tab: function () {
+            getDulcimerTab: function () {
 
-                console.log('sending:', {'tab': this.guitar_tab_string});
+                console.log('sending:', {'tab': this.guitarTabString});
 
                 let r = $.post({
-                    url: cloud_tab_converter_function,
+                    url: cloudTabConverterFunction,
                     contentType: 'application/json',
-                    data: JSON.stringify({'tab': this.guitar_tab_string})
+                    data: JSON.stringify({
+                        'tab': this.guitarTabString,
+                        'semitoneTranspose': parseInt(this.octaveTranspose) * 12 + parseInt(this.semitoneTranspose)
+                    })
                 })
                     .done(function (msg) {
-                        app.dulcimer_tab_string = msg.toString().replace(/\n/g, '<br><br>');
+                        app.dulcimerTabString = msg; //.toString().replace(/\n/g, '<br><br>');
                         console.log(msg.toString());
                     })
                     .fail(function (xhr, textStatus, errorThrown) {
