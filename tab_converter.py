@@ -1,49 +1,30 @@
-bottom_string = 'E'
-
-octave0 = ["Eb"]
-octave1 = ["E", "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#"]
-octave2 = ["e", "f", "f#", "g", "g#", "a", "a#", "b", "c", "c#", "d", "d#"]
-octave3 = ["e'", "f'", "f#'", "g'", "g#'", "a'", "a#'", "b'", "c'", "c#'", "d'", "d#'"]
-octave4 = ["e''", "f''", "f#''", "g''", "g#''", "a''", "a#''", "b''", "c''", "c#''", "d''", "d#''"]
+import midi
+import flask
+from notes import bottom_string, all_notes, note_to_dulcimer_string, midi_pitch_to_note
 
 
-all_notes = octave0 + octave1 + octave2 + octave3 + octave4
+def get_midi_pitches(file_name):
+    song = midi.read_midifile(file_name)
+    song.make_ticks_abs()
 
-# Ellie's standard octave, maybe octave up from standard guitar octave
-dulcimer_map = {
-    "E": "[1]",
-    "G": "[2]",
-    "A": "[3]",
-    "B": "[4]",
-    "C": "[5]",
-    "C#": "1",
-    "D": "[6]/2",
-    "D#": "3",
-    "e": "[7]",
-    "f": "[8]",
-    "f#": "4",
-    "g": "5",
-    "g#": "[9]/(1)",
-    "a": "[10]/6/(2)",
-    "a#": "[11]/(3)",
-    "b": "[12]/7",
-    "c": "8",
-    "c#": "(4)",
-    "d": "9/(5)",
-    "d#": "10",
-    "e'": "(6)",
-    "f'": "11",
-    "f#'": "(7)",
-    "g'": "(8)",
-    "g#'": "12",
-    "a'": "(9)",
-    "a#'": "(10)",
-    "c'": "(11)",
-    "d#'": "(12)",
-}
+    track = song[0]
+
+    note_ons = []
+    for event in track:
+        if isinstance(event, midi.NoteOnEvent):
+            note_ons.append(event)
+
+    pitches = {}
+    for note in note_ons:
+        if note.tick in pitches:
+            pitches[note.tick].append(note.pitch)
+        else:
+            pitches[note.tick] = [note.pitch]
+
+    return pitches
 
 
-def parse_tab_lines(lines):
+def parse_tab_lines(lines: list):
     tab_lines = []
     tab_line = {}
     string_notes = []
@@ -61,7 +42,6 @@ def parse_tab_lines(lines):
             string_notes.append(string_note)
 
             if line.startswith(bottom_string):
-
                 tab_line = rationalise_tab_line(tab_line, string_notes)
 
                 tab_lines.append(tab_line)
@@ -96,8 +76,8 @@ def rationalise_tab_line(tab_line, notes):
 
         # print('note to rationalise:', note)
 
-        for i in range(all_notes.index(previous_note) + 1, len(all_notes)):
-            candidate_note = all_notes[i]
+        for i in range(notes.index(previous_note) + 1, len(notes)):
+            candidate_note = notes[i]
 
             # print('candidate note:', candidate_note)
 
@@ -112,12 +92,6 @@ def rationalise_tab_line(tab_line, notes):
 
 
 def parse_tab_file(tab_file_path):
-    """
-    Loads a file of
-
-    :param tab_file_path:
-    :return:
-    """
     with open(tab_file_path) as tab:
         return parse_tab_lines(tab.readlines())
 
@@ -147,12 +121,7 @@ def extract_frets(guitar_string):
 
 
 def fret_to_note(string_name, fret_number, semitone_transpose):
-
-    # print(string_name)
-    # print(fret_number)
-
     i = all_notes.index(string_name)
-
     return all_notes[i + fret_number + semitone_transpose]
 
 
@@ -164,12 +133,7 @@ def frets_to_notes(string_name, frets, semitone_transpose):
     return notes
 
 
-def place_notes_in_beat_order(notes, bar_lines=None):
-    """
-
-    :param bar_lines:
-    :type notes: dict
-    """
+def place_notes_in_beat_order(notes: dict, bar_lines=None):
     if bar_lines is None:
         bar_lines = {}
 
@@ -189,38 +153,40 @@ def place_notes_in_beat_order(notes, bar_lines=None):
     return phrase
 
 
-def notes_to_dulcimer_tab(notes, last_beat, bar_lines=None):
+def get_unit_width():
+    unit_width = 0
+    for note in note_to_dulcimer_string:
+        if len(note_to_dulcimer_string[note]) > unit_width:
+            unit_width = len(note_to_dulcimer_string[note])
+
+    return unit_width
+
+
+def note_to_dulc_tab_string(note: str, unit_width: int):
+    fill_value = note_to_dulcimer_string.get(note, note)
+    return fill_value + '-' * (unit_width - len(fill_value))
+
+
+def notes_to_dulcimer_tab(notes, last_beat: int, bar_lines=None):
     if bar_lines is None:
         bar_lines = {}
 
     dulcimer_tab = ''
 
-    unit_width = 0
-    for note in dulcimer_map:
-        if len(dulcimer_map[note]) > unit_width:
-            unit_width = len(dulcimer_map[note])
+    unit_width = get_unit_width()
 
     for beat in range(0, last_beat + 1):
         if beat in notes:
-            if notes[beat] in dulcimer_map:
-                fill_value = dulcimer_map[notes[beat]]
-            else:
-                fill_value = notes[beat]
-
-            padded_fill_value = fill_value + '-' * (unit_width - len(fill_value))
-
-            dulcimer_tab = dulcimer_tab + padded_fill_value
-
+            dulcimer_tab += note_to_dulc_tab_string(notes[beat], unit_width)
         elif beat in bar_lines:
             dulcimer_tab = dulcimer_tab + '|' * unit_width
-
         else:
             dulcimer_tab = dulcimer_tab + '-' * unit_width
 
     return dulcimer_tab
 
 
-def tab_line_to_notes(tab_line, semitone_transpose):
+def tab_line_to_notes(tab_line, semitone_transpose: int):
     notes = {}
     all_bar_lines = {}
 
@@ -233,7 +199,7 @@ def tab_line_to_notes(tab_line, semitone_transpose):
     return notes, all_bar_lines
 
 
-def guitar_tab_lines_to_dulcimer(tab_lines, semitone_transpose=0):
+def guitar_tab_lines_to_dulcimer(tab_lines: list, semitone_transpose: int = 0):
     dulcimer_tab = ''
 
     for tab_line in tab_lines:
@@ -245,7 +211,6 @@ def guitar_tab_lines_to_dulcimer(tab_lines, semitone_transpose=0):
 
 
 def normalise_note(note):
-
     if len(note) == 1:
         return note
     elif len(note) == 2:
@@ -262,55 +227,104 @@ def normalise_note(note):
         raise ValueError('note length error, length =', len(note))
 
 
-def main():
-    with open('bright_side.txt') as tab_file:
-        guitar_tab_string = tab_file.read()
+def max_concurrent_notes(pitches: dict) -> int:
+    return max([len(pitches_at_tick) for pitches_at_tick in pitches.values()])
 
-    # guitar_tab_lines = parse_tab_file('tab.txt')
-    guitar_tab_lines = parse_tab_string(guitar_tab_string)
+def pitches_to_tab(pitches: dict, semitone_transpose: int):
+    max_simultaneous_notes = max_concurrent_notes(pitches)
+    if max_simultaneous_notes > 2:
+        raise ValueError(f"got {max_simultaneous_notes} max concurrent notes but humans only have two hands!")
 
-    # print(guitar_tab_lines)
+    top_tab = ""
+    bottom_tab = ""
 
-    dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines, semitone_transpose=-12)
-    print(dulcimer_tab)
+    unit_width = get_unit_width()
 
-    # for key in list(dulcimer_tab.keys()):
-    #     print(key, dulcimer_tab[key])
+    last_tick = max(pitches.keys())
+
+    for tick in range(last_tick):
+        pitches_at_tick = pitches.get(tick, None)
+
+        if pitches_at_tick is None:
+            continue
+
+        if len(pitches_at_tick) == 2:
+
+            continue
+
+        top_tab += note_to_dulc_tab_string(note_to_dulc_tab_string(midi_pitch_to_note[pitches_at_tick[0]]), unit_width)
 
 
-def guitar_to_dulcimer_tab(request):
-    # For more information about CORS and CORS preflight requests, see
-    # https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
-    # for more information.
 
+options_headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '3600'
+}
+
+main_headers = {
+    'Access-Control-Allow-Origin': '*'
+}
+
+
+def guitar_to_dulcimer_tab(request: flask.request):
     # Set CORS headers for the preflight request
     if request.method == 'OPTIONS':
-        # Allows GET requests from any origin with the Content-Type
-        # header and caches preflight response for an 3600s
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '3600'
-        }
-
-        return '', 204, headers
-
-    # Set CORS headers for the main request
-    headers = {
-        'Access-Control-Allow-Origin': '*'
-    }
+        return '', 204, options_headers
 
     request_json = request.get_json()
     if request_json and 'tab' in request_json:
         tab_string = request_json['tab']
         semitone_transpose = int(request_json['semitoneTranspose'])
     else:
-        return 'No guitar tab passed in', 200, headers
+        return 'No guitar tab passed in', 200, main_headers
 
     dulcimer_tab = guitar_tab_lines_to_dulcimer(parse_tab_string(tab_string), semitone_transpose=semitone_transpose)
 
-    return dulcimer_tab, 200, headers
+    return dulcimer_tab, 200, main_headers
+
+
+def midi_to_dulcimer_tab(request: flask.request):
+    # Set CORS headers for the preflight request
+    if request.method == 'OPTIONS':
+        return '', 204, options_headers
+
+    f = request.files['midi_file']
+    f.save(f.filename)
+
+    request_json = request.get_json()
+    if request_json and 'tab' in request_json:
+        semitone_transpose = int(request_json['semitoneTranspose'])
+    else:
+        return 'No guitar tab passed in', 200, main_headers
+
+    pitches = get_midi_pitches(f.filename)
+
+    tab = pitches_to_tab(pitches, semitone_transpose)
+
+    return tab, 200, main_headers
+
+
+# def main():
+#     with open('bright_side.txt') as tab_file:
+#         guitar_tab_string = tab_file.read()
+#
+#     # guitar_tab_lines = parse_tab_file('tab.txt')
+#     guitar_tab_lines = parse_tab_string(guitar_tab_string)
+#
+#     # print(guitar_tab_lines)
+#
+#     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines, semitone_transpose=-12)
+#     print(dulcimer_tab)
+#
+#     # for key in list(dulcimer_tab.keys()):
+#     #     print(key, dulcimer_tab[key])
+
+def main():
+    pitches = get_midi_pitches("teeth-dulcimer.mid")
+    max_notes = max_concurrent_notes(pitches)
+    print(max_notes)
 
 
 if __name__ == '__main__':
