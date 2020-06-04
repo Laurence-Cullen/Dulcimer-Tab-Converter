@@ -230,6 +230,7 @@ def normalise_note(note):
 def max_concurrent_notes(pitches: dict) -> int:
     return max([len(pitches_at_tick) for pitches_at_tick in pitches.values()])
 
+
 def pitches_to_tab(pitches: dict, semitone_transpose: int):
     max_simultaneous_notes = max_concurrent_notes(pitches)
     if max_simultaneous_notes > 2:
@@ -249,11 +250,9 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
             continue
 
         if len(pitches_at_tick) == 2:
-
             continue
 
         top_tab += note_to_dulc_tab_string(note_to_dulc_tab_string(midi_pitch_to_note[pitches_at_tick[0]]), unit_width)
-
 
 
 options_headers = {
