@@ -348,17 +348,15 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
     if max_simultaneous_notes > 2:
         raise ValueError(f"got {max_simultaneous_notes} max concurrent notes but humans only have two hands!")
 
+    final_tab = ""
     top_tab = ""
     bottom_tab = ""
-    unit_width = get_unit_width()
+    unit_width = get_unit_width() + 2
 
-    last_tick = max(pitches.keys())
+    ticks_per_line = 12
 
-    for tick in range(last_tick):
+    for tick_index, tick in enumerate(pitches):
         tick_pitches = pitches.get(tick, None)
-
-        if tick_pitches is None:
-            continue
 
         if len(tick_pitches) == 1:
             top_tab += note_to_dulc_tab_string(
@@ -381,7 +379,14 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
         else:
             raise ValueError(f"expect a maximum of 2 pitches per tick, got {len(tick_pitches)}")
 
-    return f"{top_tab}\n{bottom_tab}"
+        if (tick_index + 1) % ticks_per_line == 0:
+            final_tab += f"{top_tab}\n{bottom_tab}\n\n"
+            top_tab = ""
+            bottom_tab = ""
+
+    final_tab += f"{top_tab}\n{bottom_tab}\n\n"
+
+    return final_tab
 
 
 options_headers = {
@@ -446,6 +451,7 @@ def midi_to_dulcimer_tab(request: flask.request):
     return tab, 200, main_headers
 
 
+#
 # def main():
 #     with open('bright_side.txt') as tab_file:
 #         guitar_tab_string = tab_file.read()
@@ -460,7 +466,7 @@ def midi_to_dulcimer_tab(request: flask.request):
 #
 #     # for key in list(dulcimer_tab.keys()):
 #     #     print(key, dulcimer_tab[key])
-#
+
 
 def main():
     pitches = get_midi_pitches("Paperback-Dulcimer3.mid")

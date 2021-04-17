@@ -44,15 +44,22 @@
             </div>
         </div>
         <div class="row">
-            <button v-on:click="guitarToDulcimer" type="button" class="btn btn-primary">Generate From Guitar Tab
-            </button>
-            <input type="file" @change="midiToDulcimerTab">
+            <div class="col">
+                <button v-on:click="guitarToDulcimer" type="button" class="btn btn-primary">Generate From Guitar Tab
+                </button>
+            </div>
+            <div class="col">
+                <label for="midiUpload" class="btn btn-primary">Upload MIDI File</label>
+                <input type="file" @change="midiToDulcimerTab" id="midiUpload" style="display: none">
+            </div>
+
         </div>
         <div class="row">
             <div class="col-10">
                 <div class="form-group">
                     <label for="dulcimer_tab_string"></label>
-                    <textarea v-model="dulcimerTabString" class="form-control" name="" id="dulcimer_tab_string"
+                    <textarea v-model="dulcimerTabString" class="form-control initialism text-monospace" name=""
+                              id="dulcimer_tab_string"
                               rows="10"></textarea>
                 </div>
             </div>
@@ -64,6 +71,7 @@
 
     </div>
 </div>
+
 
 <!-- Optional JavaScript -->
 <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -79,6 +87,7 @@
         crossorigin="anonymous"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<link rel="stylesheet" href="style.css">
 
 
 <script>
