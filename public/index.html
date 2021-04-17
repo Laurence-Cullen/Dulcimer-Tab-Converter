@@ -44,15 +44,16 @@
             </div>
         </div>
         <div class="row">
-            <button v-on:click="getDulcimerTab" type="button" class="btn btn-primary">Generate Dulcimer Tab</button>
+            <button v-on:click="guitarToDulcimer" type="button" class="btn btn-primary">Generate From Guitar Tab
+            </button>
+            <input type="file" @change="midiToDulcimerTab">
         </div>
-
         <div class="row">
             <div class="col-10">
                 <div class="form-group">
-
                     <label for="dulcimer_tab_string"></label>
-                    <textarea v-model="dulcimerTabString" class="form-control" name="" id="dulcimer_tab_string" rows="10"></textarea>
+                    <textarea v-model="dulcimerTabString" class="form-control" name="" id="dulcimer_tab_string"
+                              rows="10"></textarea>
                 </div>
             </div>
 
@@ -81,7 +82,8 @@
 
 
 <script>
-    cloudTabConverterFunction = 'https://europe-west1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
+    guitarToDulcimerFunctionURL = 'https://europe-west1-dulcimer-tab.cloudfunctions.net/guitar_to_dulcimer_tab';
+    midiToDulcimerFunctionURL = 'https://europe-west2-dulcimer-tab.cloudfunctions.net/midi_to_dulcimer_tab';
 
     let app = new Vue({
         el: '#tab-converter',
@@ -92,17 +94,45 @@
             semitoneTranspose: 0
         },
         methods: {
-            getDulcimerTab: function () {
-
+            computeSemitones: function () {
+                return parseInt(this.octaveTranspose) * 12 + parseInt(this.semitoneTranspose)
+            },
+            guitarToDulcimer: function () {
                 console.log('sending:', {'tab': this.guitarTabString});
-
-                let r = $.post({
-                    url: cloudTabConverterFunction,
+                $.post({
+                    url: guitarToDulcimerFunctionURL,
                     contentType: 'application/json',
                     data: JSON.stringify({
                         'tab': this.guitarTabString,
-                        'semitoneTranspose': parseInt(this.octaveTranspose) * 12 + parseInt(this.semitoneTranspose)
+                        'semitoneTranspose': this.computeSemitones()
                     })
+                })
+                    .done(function (msg) {
+                        app.dulcimerTabString = msg; //.toString().replace(/\n/g, '<br><br>');
+                        console.log(msg.toString());
+                    })
+                    .fail(function (xhr, textStatus, errorThrown) {
+                        console.log(xhr.statusText);
+                        console.log(textStatus);
+                        console.log(errorThrown);
+                    })
+                    .always(function () {
+                        console.log("finished");
+                    });
+            },
+            midiToDulcimerTab: function (e) {
+                console.log("uploading midi file")
+                var files = e.target.files || e.dataTransfer.files;
+
+                var formData = new FormData();
+                formData.append("midi_file", files[0]);
+                formData.append('semitoneTranspose', this.computeSemitones())
+
+                $.post({
+                    url: midiToDulcimerFunctionURL,
+                    processData: false,
+                    contentType: false,
+                    data: formData
                 })
                     .done(function (msg) {
                         app.dulcimerTabString = msg; //.toString().replace(/\n/g, '<br><br>');
