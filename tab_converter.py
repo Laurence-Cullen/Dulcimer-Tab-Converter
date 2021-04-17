@@ -99,7 +99,7 @@ note_to_dulcimer_string = {
 }
 
 
-def get_midi_pitches(file_path):
+def get_midi_pitches(file_path: str):
     song = midi.read_midifile(file_path)
     song.make_ticks_abs()
 
@@ -229,6 +229,11 @@ def frets_to_notes(string_name, frets, semitone_transpose):
     return notes
 
 
+def transpose_note(note: str, semitone_transpose: int):
+    note_index = all_notes.index(note)
+    return all_notes[note_index + semitone_transpose]
+
+
 def place_notes_in_beat_order(notes: dict, bar_lines=None):
     if bar_lines is None:
         bar_lines = {}
@@ -258,9 +263,20 @@ def get_unit_width():
     return unit_width
 
 
-def note_to_dulc_tab_string(note: str, unit_width: int):
+def validate_fill_char(fill_char: str):
+    if len(fill_char) != 1:
+        raise ValueError(f"fill char must be a string of length 1, got length: {len(fill_char)}")
+
+
+def note_to_dulc_tab_string(note: str, unit_width: int, fill_char: str = '-'):
+    validate_fill_char(fill_char)
     fill_value = note_to_dulcimer_string.get(note, note)
-    return fill_value + '-' * (unit_width - len(fill_value))
+    return fill_value + fill_char * (unit_width - len(fill_value))
+
+
+def empty_dulc_tab_string(unit_width: int, fill_char: str = '-'):
+    validate_fill_char(fill_char)
+    return fill_char * unit_width
 
 
 def notes_to_dulcimer_tab(notes, last_beat: int, bar_lines=None):
@@ -333,31 +349,47 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
         raise ValueError(f"got {max_simultaneous_notes} max concurrent notes but humans only have two hands!")
 
     top_tab = ""
-    # bottom_tab = ""
-
+    bottom_tab = ""
     unit_width = get_unit_width()
 
     last_tick = max(pitches.keys())
 
     for tick in range(last_tick):
-        pitches_at_tick = pitches.get(tick, None)
+        tick_pitches = pitches.get(tick, None)
 
-        if pitches_at_tick is None:
+        if tick_pitches is None:
             continue
 
-        if len(pitches_at_tick) == 2:
-            continue
+        if len(tick_pitches) == 1:
+            top_tab += note_to_dulc_tab_string(
+                transpose_note(midi_pitch_to_note[tick_pitches[0]], semitone_transpose=semitone_transpose),
+                unit_width
+            )
+            bottom_tab += empty_dulc_tab_string(unit_width)
+        elif len(tick_pitches) == 2:
+            if tick_pitches[1] > tick_pitches[0]:
+                tick_pitches[0], tick_pitches[1] = tick_pitches[1], tick_pitches[0]
 
-        top_tab += note_to_dulc_tab_string(
-            note_to_dulc_tab_string(midi_pitch_to_note[pitches_at_tick[0]], unit_width), unit_width
-        )
+            top_tab += note_to_dulc_tab_string(
+                transpose_note(midi_pitch_to_note[tick_pitches[0]], semitone_transpose=semitone_transpose),
+                unit_width
+            )
+            bottom_tab += note_to_dulc_tab_string(
+                transpose_note(midi_pitch_to_note[tick_pitches[1]], semitone_transpose=semitone_transpose),
+                unit_width
+            )
+        else:
+            raise ValueError(f"expect a maximum of 2 pitches per tick, got {len(tick_pitches)}")
+
+    return f"{top_tab}\n{bottom_tab}"
 
 
 options_headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '3600'
+    'Access-Control-Allow-Methods': '*',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Max-Age': '3600',
+    'Access-Control-Allow-Credentials': 'true'
 }
 
 main_headers = {
@@ -386,6 +418,8 @@ def guitar_to_dulcimer_tab(request: flask.request):
 
 
 def midi_to_dulcimer_tab(request: flask.request):
+    print(f"{request.method}")
+
     # Set CORS headers for the preflight request
     if request.method == 'OPTIONS':
         return '', 204, options_headers
@@ -394,15 +428,20 @@ def midi_to_dulcimer_tab(request: flask.request):
     midi_save_path = pathlib.Path(f"/tmp/{midi_file.filename}")
     midi_file.save(midi_save_path)
 
-    request_json = request.get_json()
-    if request_json and 'tab' in request_json:
-        semitone_transpose = int(request_json['semitoneTranspose'])
-    else:
-        return 'No guitar tab passed in', 200, main_headers
+    print(request.form)
 
-    pitches = get_midi_pitches(midi_save_path)
+    if 'semitoneTranspose' not in request.form:
+        return 'No semitoneTranspose passed in', 200, main_headers
+
+    semitone_transpose = int(request.form['semitoneTranspose'])
+
+    pitches = get_midi_pitches(str(midi_save_path))
+
+    print(f"pitches: {pitches}")
 
     tab = pitches_to_tab(pitches, semitone_transpose)
+
+    print(f"tab: {tab}")
 
     return tab, 200, main_headers
 
@@ -416,16 +455,22 @@ def midi_to_dulcimer_tab(request: flask.request):
 #
 #     # print(guitar_tab_lines)
 #
-#     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines, semitone_transpose=-12)
+#     dulcimer_tab = guitar_tab_lines_to_dulcimer(guitar_tab_lines, semitone_transpose=0)
 #     print(dulcimer_tab)
 #
 #     # for key in list(dulcimer_tab.keys()):
 #     #     print(key, dulcimer_tab[key])
+#
 
 def main():
-    pitches = get_midi_pitches("teeth-dulcimer.mid")
-    max_notes = max_concurrent_notes(pitches)
-    print(max_notes)
+    pitches = get_midi_pitches("Paperback-Dulcimer3.mid")
+
+    print(pitches)
+    tab = pitches_to_tab(pitches, 0)
+    print(tab)
+
+    # max_notes = max_concurrent_notes(pitches)
+    # print(max_notes)
 
 
 if __name__ == '__main__':
