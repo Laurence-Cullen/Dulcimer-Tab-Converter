@@ -12,8 +12,7 @@ octave3 = ["e'", "f'", "f#'", "g'", "g#'", "a'", "a#'", "b'", "c'", "c#'", "d'",
 octave4 = ["e''", "f''", "f#''", "g''", "g#''", "a''", "a#''", "b''", "c''", "c#''", "d''", "d#''"]
 
 all_notes = octave0 + octave1 + octave2 + octave3 + octave4
-
-midi_pitch_to_note = {
+pitch_to_note = {
     99: "d#''",
     98: "d''",
     97: "c#''",
@@ -65,6 +64,17 @@ midi_pitch_to_note = {
     51: "Eb"
 }
 
+
+def note_from_pitch(pitch: int) -> str:
+    try:
+        return pitch_to_note[pitch]
+    except KeyError:
+        raise KeyError(
+            f"MIDI pitch {pitch} is outside of supported range "
+            f"{min(pitch_to_note.keys())} - {max(pitch_to_note.keys())}"
+        )
+
+
 # Ellie's standard octave, maybe octave up from standard guitar octave
 note_to_dulcimer_string = {
     "E": "[1]",
@@ -103,6 +113,8 @@ def get_midi_pitches(file_path: str):
     song = midi.read_midifile(file_path)
     song.make_ticks_abs()
 
+    if len(song) > 1:
+        raise ValueError(f"The MIDI file contains {len(song)} tracks, the maximum is 1.")
     track = song[0]
 
     note_ons = []
@@ -360,7 +372,7 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
 
         if len(tick_pitches) == 1:
             top_tab += note_to_dulc_tab_string(
-                transpose_note(midi_pitch_to_note[tick_pitches[0]], semitone_transpose=semitone_transpose),
+                transpose_note(note_from_pitch(tick_pitches[0]), semitone_transpose=semitone_transpose),
                 unit_width
             )
             bottom_tab += empty_dulc_tab_string(unit_width)
@@ -369,11 +381,11 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
                 tick_pitches[0], tick_pitches[1] = tick_pitches[1], tick_pitches[0]
 
             top_tab += note_to_dulc_tab_string(
-                transpose_note(midi_pitch_to_note[tick_pitches[0]], semitone_transpose=semitone_transpose),
+                transpose_note(note_from_pitch(tick_pitches[0]), semitone_transpose=semitone_transpose),
                 unit_width
             )
             bottom_tab += note_to_dulc_tab_string(
-                transpose_note(midi_pitch_to_note[tick_pitches[1]], semitone_transpose=semitone_transpose),
+                transpose_note(note_from_pitch(tick_pitches[1]), semitone_transpose=semitone_transpose),
                 unit_width
             )
         else:
@@ -436,19 +448,22 @@ def midi_to_dulcimer_tab(request: flask.request):
     print(request.form)
 
     if 'semitoneTranspose' not in request.form:
-        return 'No semitoneTranspose passed in', 200, main_headers
+        return 'No semitoneTranspose passed in', 500, main_headers
 
-    semitone_transpose = int(request.form['semitoneTranspose'])
+    try:
+        semitone_transpose = int(request.form['semitoneTranspose'])
 
-    pitches = get_midi_pitches(str(midi_save_path))
+        pitches = get_midi_pitches(str(midi_save_path))
 
-    print(f"pitches: {pitches}")
+        print(f"pitches: {pitches}")
 
-    tab = pitches_to_tab(pitches, semitone_transpose)
+        tab = pitches_to_tab(pitches, semitone_transpose)
 
-    print(f"tab: {tab}")
+        print(f"tab: {tab}")
 
-    return tab, 200, main_headers
+        return tab, 200, main_headers
+    except Exception as e:
+        return e, 500, main_headers
 
 
 #
@@ -469,7 +484,7 @@ def midi_to_dulcimer_tab(request: flask.request):
 
 
 def main():
-    pitches = get_midi_pitches("Paperback-Dulcimer3.mid")
+    pitches = get_midi_pitches("Bloaty Dulcimer 1 - transposed.mid")
 
     print(pitches)
     tab = pitches_to_tab(pitches, 0)
