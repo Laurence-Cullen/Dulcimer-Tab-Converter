@@ -149,15 +149,21 @@
                     })
                     .fail(function (xhr, textStatus, errorThrown) {
                         console.log(xhr.statusText);
+                        console.log(xhr.status);
                         console.log(textStatus);
                         console.log(errorThrown);
+                        console.log(xhr.responseText);
+                        alert(xhr.responseText);
                     })
                     .always(function () {
                         console.log("finished");
+                        document.getElementById("midiUpload").value = "";
                     });
             }
         }
     })
+
+
 </script>
 
 

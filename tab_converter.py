@@ -463,7 +463,7 @@ def midi_to_dulcimer_tab(request: flask.request):
 
         return tab, 200, main_headers
     except Exception as e:
-        return e, 500, main_headers
+        return str(e), 500, main_headers
 
 
 #
