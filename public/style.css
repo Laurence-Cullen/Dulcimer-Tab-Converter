@@ -1,3 +1,7 @@
 textarea {
     font-size: x-small !important;
 }
+
+.midi-track-button {
+    margin-top: 32px;
+}

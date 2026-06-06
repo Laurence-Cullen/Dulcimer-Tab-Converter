@@ -54,6 +54,24 @@
             </div>
 
         </div>
+        <div class="row mt-3" v-if="midiTrackChoices.length">
+            <div class="col-10">
+                <div class="form-group">
+                    <label for="midiTrackSelect">MIDI track</label>
+                    <select v-model="selectedMidiTrackIndex" id="midiTrackSelect" class="form-control">
+                        <option disabled value="">Select a track</option>
+                        <option v-for="track in midiTrackChoices" v-bind:value="track.index">
+                            {{ track.label }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-2">
+                <button v-on:click="generateSelectedMidiTrack" type="button" class="btn btn-primary midi-track-button"
+                        v-bind:disabled="selectedMidiTrackIndex === ''">Generate
+                </button>
+            </div>
+        </div>
         <div class="row">
             <div class="col-10">
                 <div class="form-group">
@@ -100,7 +118,10 @@
             guitarTabString: '',
             dulcimerTabString: '',
             octaveTranspose: 0,
-            semitoneTranspose: 0
+            semitoneTranspose: 0,
+            selectedMidiFile: null,
+            midiTrackChoices: [],
+            selectedMidiTrackIndex: ''
         },
         methods: {
             computeSemitones: function () {
@@ -133,9 +154,26 @@
                 console.log("uploading midi file")
                 var files = e.target.files || e.dataTransfer.files;
 
+                if (!files.length) {
+                    return
+                }
+
+                this.selectedMidiFile = files[0];
+                this.midiTrackChoices = [];
+                this.selectedMidiTrackIndex = '';
+                this.uploadMidiFile();
+            },
+            generateSelectedMidiTrack: function () {
+                this.uploadMidiFile(this.selectedMidiTrackIndex);
+            },
+            uploadMidiFile: function (trackIndex) {
                 var formData = new FormData();
-                formData.append("midi_file", files[0]);
+                formData.append("midi_file", this.selectedMidiFile);
                 formData.append('semitoneTranspose', this.computeSemitones())
+
+                if (trackIndex !== undefined && trackIndex !== '') {
+                    formData.append('trackIndex', trackIndex)
+                }
 
                 $.post({
                     url: midiToDulcimerFunctionURL,
@@ -144,6 +182,15 @@
                     data: formData
                 })
                     .done(function (msg) {
+                        if (msg.type === 'track_selection_required') {
+                            app.midiTrackChoices = msg.tracks;
+                            app.selectedMidiTrackIndex = '';
+                            return
+                        }
+
+                        app.midiTrackChoices = [];
+                        app.selectedMidiTrackIndex = '';
+                        app.selectedMidiFile = null;
                         app.dulcimerTabString = msg; //.toString().replace(/\n/g, '<br><br>');
                         console.log(msg.toString());
                     })
@@ -169,5 +216,3 @@
 
 </body>
 </html>
-
-

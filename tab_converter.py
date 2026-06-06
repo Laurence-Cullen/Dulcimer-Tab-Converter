@@ -1,3 +1,4 @@
+import json
 import pathlib
 
 import flask
@@ -75,6 +76,18 @@ def note_from_pitch(pitch: int) -> str:
         )
 
 
+def note_from_transposed_pitch(pitch: int, semitone_transpose: int) -> str:
+    transposed_pitch = pitch + semitone_transpose
+    try:
+        return pitch_to_note[transposed_pitch]
+    except KeyError:
+        raise KeyError(
+            f"MIDI pitch {pitch} transposed by {semitone_transpose} semitones "
+            f"to {transposed_pitch} is outside of supported range "
+            f"{min(pitch_to_note.keys())} - {max(pitch_to_note.keys())}"
+        )
+
+
 # Ellie's standard octave, maybe octave up from standard guitar octave
 note_to_dulcimer_string = {
     "E": "[1]",
@@ -109,19 +122,33 @@ note_to_dulcimer_string = {
 }
 
 
-def get_midi_pitches(file_path: str):
-    song = midi.read_midifile(file_path)
-    song.make_ticks_abs()
-
-    if len(song) > 1:
-        raise ValueError(f"The MIDI file contains {len(song)} tracks, the maximum is 1.")
-    track = song[0]
-
+def get_track_note_ons(track):
     note_ons = []
     for event in track:
-        if isinstance(event, midi.NoteOnEvent):
+        if isinstance(event, midi.NoteOnEvent) and getattr(event, 'velocity', 1) > 0:
             note_ons.append(event)
 
+    return note_ons
+
+
+def get_non_empty_midi_tracks(song):
+    tracks = []
+
+    for track_index, track in enumerate(song):
+        note_ons = get_track_note_ons(track)
+        if note_ons:
+            tracks.append({
+                'index': track_index,
+                'note_count': len(note_ons),
+                'first_tick': note_ons[0].tick,
+                'last_tick': note_ons[-1].tick,
+                'note_ons': note_ons
+            })
+
+    return tracks
+
+
+def note_ons_to_pitches(note_ons):
     pitches = {}
     for note in note_ons:
         if note.tick in pitches:
@@ -130,6 +157,45 @@ def get_midi_pitches(file_path: str):
             pitches[note.tick] = [note.pitch]
 
     return pitches
+
+
+def midi_track_choices(non_empty_tracks):
+    return [
+        {
+            'index': track['index'],
+            'label': f"Track {track['index'] + 1} ({track['note_count']} notes)"
+        }
+        for track in non_empty_tracks
+    ]
+
+
+def get_midi_pitches(file_path: str, track_index: int = None):
+    song = midi.read_midifile(file_path)
+    song.make_ticks_abs()
+
+    non_empty_tracks = get_non_empty_midi_tracks(song)
+
+    if not non_empty_tracks:
+        raise ValueError("The MIDI file does not contain any non-empty tracks.")
+
+    if track_index is None:
+        if len(non_empty_tracks) > 1:
+            raise ValueError(
+                f"The MIDI file contains {len(non_empty_tracks)} non-empty tracks, "
+                "please select a track."
+            )
+        selected_track = non_empty_tracks[0]
+    else:
+        selected_track = None
+        for track in non_empty_tracks:
+            if track['index'] == track_index:
+                selected_track = track
+                break
+
+        if selected_track is None:
+            raise ValueError(f"Track {track_index + 1} is empty or does not exist.")
+
+    return note_ons_to_pitches(selected_track['note_ons'])
 
 
 def parse_tab_lines(lines: list):
@@ -372,7 +438,7 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
 
         if len(tick_pitches) == 1:
             top_tab += note_to_dulc_tab_string(
-                transpose_note(note_from_pitch(tick_pitches[0]), semitone_transpose=semitone_transpose),
+                note_from_transposed_pitch(tick_pitches[0], semitone_transpose=semitone_transpose),
                 unit_width
             )
             bottom_tab += empty_dulc_tab_string(unit_width)
@@ -381,11 +447,11 @@ def pitches_to_tab(pitches: dict, semitone_transpose: int):
                 tick_pitches[0], tick_pitches[1] = tick_pitches[1], tick_pitches[0]
 
             top_tab += note_to_dulc_tab_string(
-                transpose_note(note_from_pitch(tick_pitches[0]), semitone_transpose=semitone_transpose),
+                note_from_transposed_pitch(tick_pitches[0], semitone_transpose=semitone_transpose),
                 unit_width
             )
             bottom_tab += note_to_dulc_tab_string(
-                transpose_note(note_from_pitch(tick_pitches[1]), semitone_transpose=semitone_transpose),
+                note_from_transposed_pitch(tick_pitches[1], semitone_transpose=semitone_transpose),
                 unit_width
             )
         else:
@@ -411,6 +477,12 @@ options_headers = {
 
 main_headers = {
     'Access-Control-Allow-Origin': '*'
+}
+
+
+json_headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Content-Type': 'application/json'
 }
 
 
@@ -452,8 +524,35 @@ def midi_to_dulcimer_tab(request: flask.request):
 
     try:
         semitone_transpose = int(request.form['semitoneTranspose'])
+        requested_track_index = request.form.get('trackIndex')
+        track_index = int(requested_track_index) if requested_track_index else None
 
-        pitches = get_midi_pitches(str(midi_save_path))
+        song = midi.read_midifile(str(midi_save_path))
+        song.make_ticks_abs()
+        non_empty_tracks = get_non_empty_midi_tracks(song)
+
+        if not non_empty_tracks:
+            raise ValueError("The MIDI file does not contain any non-empty tracks.")
+
+        if track_index is None and len(non_empty_tracks) > 1:
+            return json.dumps({
+                'type': 'track_selection_required',
+                'tracks': midi_track_choices(non_empty_tracks)
+            }), 200, json_headers
+
+        if track_index is None:
+            selected_track = non_empty_tracks[0]
+        else:
+            selected_track = None
+            for track in non_empty_tracks:
+                if track['index'] == track_index:
+                    selected_track = track
+                    break
+
+            if selected_track is None:
+                raise ValueError(f"Track {track_index + 1} is empty or does not exist.")
+
+        pitches = note_ons_to_pitches(selected_track['note_ons'])
 
         print(f"pitches: {pitches}")
 
